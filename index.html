@@ -241,15 +241,16 @@
       margin-bottom: 18px;
     }
 
-    .budget-row,
-    .form-grid {
+    .budget-row {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr auto auto;
       gap: 12px;
     }
 
     .form-grid {
+      display: grid;
       grid-template-columns: 1.2fr 0.8fr;
+      gap: 12px;
       margin-bottom: 12px;
     }
 
@@ -288,6 +289,14 @@
 
     .btn:hover {
       background: var(--olive-dark);
+    }
+
+    .reset-btn {
+      background: var(--danger);
+    }
+
+    .reset-btn:hover {
+      background: #a93e3e;
     }
 
     .progress-area {
@@ -646,6 +655,7 @@
           <div class="budget-row">
             <input type="number" id="budgetInput" placeholder="Enter monthly budget e.g. 8000">
             <button class="btn" id="saveBudgetBtn">Save Budget</button>
+            <button class="btn reset-btn" id="resetBtn" type="button">Reset All</button>
           </div>
 
           <div class="progress-area">
@@ -745,7 +755,8 @@
       orderBy,
       serverTimestamp,
       setDoc,
-      getDoc
+      getDoc,
+      getDocs
     } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -782,6 +793,7 @@
     const todayDate = document.getElementById("todayDate");
     const budgetInput = document.getElementById("budgetInput");
     const saveBudgetBtn = document.getElementById("saveBudgetBtn");
+    const resetBtn = document.getElementById("resetBtn");
     const expenseForm = document.getElementById("expenseForm");
     const expenseTitle = document.getElementById("expenseTitle");
     const expenseAmount = document.getElementById("expenseAmount");
@@ -869,6 +881,39 @@
       } catch (error) {
         console.error(error);
         showToast("Firebase budget error. Check Firestore rules.");
+      }
+    });
+
+    resetBtn.addEventListener("click", async () => {
+      const confirmReset = confirm("Are you sure you want to reset all expenses and budget?");
+
+      if (!confirmReset) return;
+
+      try {
+        const snapshot = await getDocs(expensesRef);
+
+        const deletePromises = snapshot.docs.map((item) => {
+          return deleteDoc(doc(db, "budgetvault_expenses", item.id));
+        });
+
+        await Promise.all(deletePromises);
+
+        await setDoc(budgetRef, {
+          amount: 0,
+          updatedAt: serverTimestamp()
+        });
+
+        monthlyBudget = 0;
+        expenses = [];
+
+        updateDashboard();
+        renderExpenses();
+        renderBreakdown();
+
+        showToast("Budget reset successfully.");
+      } catch (error) {
+        console.error(error);
+        showToast("Reset failed.");
       }
     });
 
